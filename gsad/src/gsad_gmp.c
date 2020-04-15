@@ -380,7 +380,8 @@ gmp_init (const gchar *manager_address_unix, const gchar *manager_address_tls,
   else if (manager_address_tls)
     {
       manager_address = g_strdup (manager_address_tls);
-      manager_use_tls = 1;
+      //manager_use_tls = 1;
+      manager_use_tls = 0;
     }
   else
     {
@@ -18508,6 +18509,46 @@ connect_unix (const gchar *path)
 }
 
 /**
+ * @brief Connect to Greenbone Vulnerability Manager daemon.
+ *
+ * @param[in]  path  Path to the Manager socket.
+ *
+ * @return Socket, or -1 on error.
+ */
+int
+connect_inet (const gchar *path, int port)
+{
+  struct sockaddr_in address;
+  int sock;
+
+  /* Make socket. */
+
+  sock = socket (AF_INET, SOCK_STREAM, 0);
+  if (sock == -1)
+    {
+      g_warning ("Failed to create server socket");
+      return -1;
+    }
+
+  /* Connect to server. */
+
+  address.sin_family = AF_INET;
+  //strncpy (address.sun_path, path, sizeof (address.sun_path) - 1);
+  inet_aton(path, &address.sin_addr);
+  address.sin_port = htons(port);
+  if (connect (sock, (struct sockaddr *) &address, sizeof (address)) == -1)
+    {
+      g_warning ("Failed to connect to server at %s: %s", path,
+                 strerror (errno));
+      close (sock);
+      return -1;
+    }
+
+  return sock;
+}
+
+
+/**
  * @brief Connect to an address.
  *
  * @param[out]  connection  Connection.
@@ -18532,7 +18573,7 @@ gvm_connection_open (gvm_connection_t *connection, const gchar *address,
       connection->credentials = NULL;
     }
   else
-    connection->socket = connect_unix (address);
+    connection->socket = connect_inet (address, port);
 
   if (connection->socket == -1)
     return -1;
